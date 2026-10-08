@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+:root { color-scheme: dark; --tinta: #0b1220; --painel: #121b2e; --linha: #1f2b44; }
+html, body { background: var(--tinta); }
+body {
+  color: #e2e8f0; margin: 0;
+  font-family: ui-rounded, "SF Pro Rounded", "Segoe UI", system-ui, sans-serif;
+  padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);
+  -webkit-tap-highlight-color: transparent;
+}
+.card { @apply rounded-2xl p-4; background: var(--painel); border: 1px solid var(--linha); }
+.inp { @apply w-full rounded-xl px-3 py-3 text-base outline-none focus:ring-2 focus:ring-blue-400; background: var(--tinta); border: 1px solid var(--linha); }
+.btn { @apply rounded-xl px-4 py-3 font-bold bg-blue-500 text-white active:scale-95 transition disabled:opacity-40; }
+.btn-sec { @apply rounded-xl px-4 py-3 font-semibold active:scale-95 transition; background: var(--linha); }
+.hoje-col { box-shadow: 0 0 0 2px #fbbf24, 0 0 14px 2px #fbbf2488; animation: brilho 2.4s ease-in-out infinite; }
+@keyframes brilho { 50% { box-shadow: 0 0 0 2px #fde68a, 0 0 20px 4px #fbbf2455; } }
+@media (prefers-reduced-motion: reduce) { .hoje-col { animation: none; } }
