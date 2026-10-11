@@ -14,3 +14,8 @@ export function tipoDoDia(iso, ancoraIso, offset) {
   const dias = Math.round((ms(iso) - ms(ancoraIso)) / 86400000)
   return ((((dias + offset) % 6) + 6) % 6) < 4 ? 'T' : 'F'
 }
+
+export const TURNOS = {
+  diurno: { nome: 'Diurno', horario: '07h às 19h' },
+  noturno: { nome: 'Noturno', horario: '19h às 07h' }
+}

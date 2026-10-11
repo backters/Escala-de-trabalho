@@ -34,11 +34,12 @@ export default function Trocas({ eu, analistas }) {
 
   const nome = id => analistas.find(a => a.id === id)?.nome || '?'
   const tipo = (id, d) => pl.find(r => r.analista_id === id && r.data === d)?.tipo
+  const minhas = trocas.filter(t => analistas.some(a => a.id === t.solicitante_id))
   const datas = [...new Set(pl.map(r => r.data))].sort()
   // A trabalha em dsol e folga em ddest; B folga em dsol e trabalha em ddest
   const opSol = dest ? datas.filter(d => tipo(eu.id, d) === 'T' && tipo(dest, d) === 'F') : []
   const opDest = dest ? datas.filter(d => tipo(eu.id, d) === 'F' && tipo(dest, d) === 'T') : []
-  const recebidas = trocas.filter(t => t.destinatario_id === eu.id && t.status === 'pendente')
+  const recebidas = minhas.filter(t => t.destinatario_id === eu.id && t.status === 'pendente')
   const aviso = t => { setMsg(t); setTimeout(() => setMsg(''), 4000) }
 
   async function rpc(fn, args, ok) {
@@ -86,8 +87,8 @@ export default function Trocas({ eu, analistas }) {
 
       <section className="space-y-2">
         <h2 className="font-extrabold">Histórico de trocas</h2>
-        {trocas.length === 0 && <p className="text-slate-400 text-sm">Nenhuma troca registrada ainda. Use o formulário acima para pedir a primeira.</p>}
-        {trocas.map(t => (
+        {minhas.length === 0 && <p className="text-slate-400 text-sm">Nenhuma troca registrada ainda. Use o formulário acima para pedir a primeira.</p>}
+        {minhas.map(t => (
           <div key={t.id} className="card !p-3 text-sm space-y-1">
             <div className="flex justify-between items-center">
               <b>{nome(t.solicitante_id)} → {nome(t.destinatario_id)}</b>
