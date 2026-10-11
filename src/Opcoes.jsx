@@ -2,9 +2,45 @@ import { useEffect, useState } from 'react'
 import { supabase } from './lib/supabase'
 import { ativarPush, pararPush } from './lib/push'
 import AdminLogin from './AdminLogin'
+import { assinar, podeInstalar, instalar, foiInstalado } from './lib/install'
 
 const ios = /iphone|ipad|ipod/i.test(navigator.userAgent)
 const instalado = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone
+
+function InstalarApp() {
+  const [, atualizar] = useState(0)
+  const [guia, setGuia] = useState(ios)
+  useEffect(() => assinar(() => atualizar(n => n + 1)), [])
+
+  if (instalado || foiInstalado())
+    return <div className="card"><p className="font-semibold">✅ App instalado neste aparelho.</p></div>
+
+  const direto = podeInstalar()
+  return (
+    <div className="card space-y-3">
+      <h2 className="font-extrabold">📲 Instalar o app</h2>
+      <p className="text-sm text-slate-300">Adicione à tela inicial para abrir em tela cheia e receber as notificações.</p>
+      <button className="btn w-full" onClick={() => (direto ? instalar() : setGuia(!guia))}>
+        {direto ? 'Instalar app' : 'Como instalar'}
+      </button>
+      {guia && (ios ? (
+        <ol className="text-sm text-slate-200 list-decimal pl-5 space-y-1">
+          <li>Abra este endereço no <b>Safari</b> (o Chrome do iPhone não instala).</li>
+          <li>Toque em <b>Compartilhar</b> (quadrado com seta para cima).</li>
+          <li>Toque em <b>Adicionar à Tela de Início</b>.</li>
+          <li>Deixe <b>Abrir como app web</b> ligado e toque em <b>Adicionar</b>.</li>
+          <li>Abra o app <b>pelo ícone</b> na tela inicial.</li>
+        </ol>
+      ) : (
+        <ol className="text-sm text-slate-200 list-decimal pl-5 space-y-1">
+          <li>No <b>Chrome</b>, toque no menu <b>⋮</b> (canto superior direito).</li>
+          <li>Toque em <b>Instalar app</b> ou <b>Adicionar à tela inicial</b>.</li>
+          <li>Confirme em <b>Instalar</b>.</li>
+        </ol>
+      ))}
+    </div>
+  )
+}
 
 function Notificacoes({ eu }) {
   const [ativa, setAtiva] = useState(false)
@@ -82,6 +118,7 @@ function AdminPanel({ analistas, recarregar }) {
 export default function Opcoes({ eu, admin, analistas, recarregar, sair }) {
   return (
     <div className="space-y-4">
+      <InstalarApp />
       {eu && <Notificacoes eu={eu} />}
       {admin ? <AdminPanel analistas={analistas} recarregar={recarregar} /> : <AdminLogin />}
       <button className="btn-sec w-full" onClick={sair}>Sair {eu ? `(${eu.nome})` : ''}</button>
