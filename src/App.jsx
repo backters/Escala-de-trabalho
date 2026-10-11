@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { Analytics } from '@vercel/analytics/react'
 import { supabase } from './lib/supabase'
 import { TURNOS } from './lib/escala'
 import Grid from './Grid'
@@ -107,7 +108,9 @@ export default function App() {
   const T = TURNOS[turno]
   const abas = [['escala', '📅', 'Escala'], ['trocas', '🔄', 'Trocas'], ['opcoes', '⚙️', 'Opções']]
   return (
-    <div className="max-w-3xl mx-auto pb-24">
+    <>
+      <Analytics />
+      <div className="max-w-3xl mx-auto pb-24">
       <header className="sticky top-0 z-20 px-4 py-3 flex items-center justify-between backdrop-blur"
         style={{ background: '#0b1220ee', borderBottom: '1px solid var(--linha)' }}>
         <div>
@@ -142,5 +145,6 @@ export default function App() {
         ))}
       </nav>
     </div>
+    </>
   )
 }
