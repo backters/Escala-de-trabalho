@@ -126,7 +126,7 @@ export default function App() {
           </select>
         )}
         {aba === 'escala' && <Grid analistas={visiveis} admin={admin} eu={eu} />}
-        {aba === 'trocas' && <Trocas eu={eu} analistas={visiveis} />}
+        {aba === 'trocas' && <Trocas eu={eu} analistas={visiveis} admin={admin} />}
         {aba === 'opcoes' && <Opcoes eu={eu} admin={admin} analistas={analistas} recarregar={carregar} sair={sair} />}
       </main>
 

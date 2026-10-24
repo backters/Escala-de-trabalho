@@ -5,7 +5,7 @@ import { fmt, hojeISO, diaSemana } from './lib/escala'
 const COR = { pendente: 'bg-amber-400/20 text-amber-200', aceito: 'bg-emerald-500/20 text-emerald-200', recusado: 'bg-red-500/20 text-red-200', cancelado: 'bg-slate-500/30 text-slate-300' }
 const dt = s => (s ? new Date(s).toLocaleDateString('pt-BR') : '—')
 
-export default function Trocas({ eu, analistas }) {
+export default function Trocas({ eu, analistas, admin }) {
   const hoje = hojeISO()
   const [trocas, setTrocas] = useState([])
   const [pl, setPl] = useState([])
@@ -13,6 +13,7 @@ export default function Trocas({ eu, analistas }) {
   const [dsol, setDsol] = useState('')
   const [ddest, setDdest] = useState('')
   const [msg, setMsg] = useState('')
+  const [filtro, setFiltro] = useState('todas')
 
   const carregar = useCallback(async () => {
     const [t, p] = await Promise.all([
@@ -30,7 +31,50 @@ export default function Trocas({ eu, analistas }) {
     return () => supabase.removeChannel(ch)
   }, [carregar])
 
-  if (!eu) return <p className="card text-slate-300">Entre como analista para solicitar ou responder trocas. O histórico completo aparece abaixo.</p>
+  // Painel do administrador: vê todas as trocas do turno e pode aprovar, recusar, cancelar ou desfazer
+  if (admin) {
+    const nomeA = id => analistas.find(a => a.id === id)?.nome || '?'
+    const doTurno = trocas.filter(t => analistas.some(a => a.id === t.solicitante_id))
+    const lista = doTurno.filter(t => filtro === 'todas' || t.status === filtro)
+    const agir = async (t, acao, pergunta) => {
+      if (pergunta && !confirm(pergunta)) return
+      const { error } = await supabase.rpc('admin_gerenciar_troca', { p_troca: t.id, p_acao: acao })
+      setMsg(error ? '❌ ' + error.message : '✅ Troca atualizada')
+      setTimeout(() => setMsg(''), 4000)
+      carregar()
+    }
+    return (
+      <div className="space-y-3">
+        <h2 className="font-extrabold">Trocas do turno ({doTurno.filter(t => t.status === 'pendente').length} pendentes)</h2>
+        <select className="inp !py-2" value={filtro} onChange={e => setFiltro(e.target.value)}>
+          {['todas', 'pendente', 'aceito', 'recusado', 'cancelado'].map(s => <option key={s} value={s}>{s === 'todas' ? 'Todas' : s}</option>)}
+        </select>
+        {lista.length === 0 && <p className="text-slate-400 text-sm">Nenhuma troca encontrada.</p>}
+        {lista.map(t => (
+          <div key={t.id} className="card !p-3 text-sm space-y-2">
+            <div className="flex justify-between items-center">
+              <b>{nomeA(t.solicitante_id)} → {nomeA(t.destinatario_id)}</b>
+              <span className={`rounded-full px-2 py-0.5 text-xs ${COR[t.status]}`}>{t.status}</span>
+            </div>
+            <p className="text-slate-300">{nomeA(t.solicitante_id)} folga {fmt(t.data_solicitante)} · {nomeA(t.destinatario_id)} folga {fmt(t.data_destinatario)}</p>
+            <p className="text-xs text-slate-400">Pedido em {dt(t.criado_em)}{t.respondido_em && ` · respondido em ${dt(t.respondido_em)}`}</p>
+            <div className="flex gap-2 flex-wrap">
+              {t.status === 'pendente' && <>
+                <button className="btn !py-1 !px-3 text-xs" onClick={() => agir(t, 'aceitar', 'Aprovar e aplicar esta troca na escala?')}>Aprovar</button>
+                <button className="btn-sec !py-1 !px-3 text-xs" onClick={() => agir(t, 'recusar')}>Recusar</button>
+                <button className="btn-sec !py-1 !px-3 text-xs" onClick={() => agir(t, 'cancelar', 'Cancelar este pedido?')}>Cancelar</button>
+              </>}
+              {t.status === 'aceito' &&
+                <button className="btn-sec !py-1 !px-3 text-xs" onClick={() => agir(t, 'desfazer', 'Desfazer a troca? A escala volta ao que era antes.')}>Desfazer troca</button>}
+            </div>
+          </div>
+        ))}
+        {msg && <div className="fixed bottom-24 inset-x-0 mx-auto w-fit max-w-[90%] card !py-2 z-40 text-sm">{msg}</div>}
+      </div>
+    )
+  }
+
+  if (!eu) return <p className="card text-slate-300">Entre como analista para solicitar ou responder trocas.</p>
 
   const nome = id => analistas.find(a => a.id === id)?.nome || '?'
   const tipo = (id, d) => pl.find(r => r.analista_id === id && r.data === d)?.tipo
