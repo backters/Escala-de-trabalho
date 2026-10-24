@@ -14,6 +14,7 @@ export default function Trocas({ eu, analistas, admin }) {
   const [ddest, setDdest] = useState('')
   const [msg, setMsg] = useState('')
   const [filtro, setFiltro] = useState('todas')
+  const [form, setForm] = useState(null)
 
   const carregar = useCallback(async () => {
     const [t, p] = await Promise.all([
@@ -43,9 +44,61 @@ export default function Trocas({ eu, analistas, admin }) {
       setTimeout(() => setMsg(''), 4000)
       carregar()
     }
+    // Troca direta: o admin define as datas e a escala muda na hora, sem aceite das analistas
+    const tp = (id, d) => pl.find(r => r.analista_id === id && r.data === d)?.tipo
+    const tipoBase = (id, d) => {
+      const e = form?.editar
+      if (e && e.status === 'aceito') {  // simula a escala sem a troca antiga
+        if (id === e.solicitante_id && d === e.data_solicitante) return 'T'
+        if (id === e.solicitante_id && d === e.data_destinatario) return 'F'
+        if (id === e.destinatario_id && d === e.data_solicitante) return 'F'
+        if (id === e.destinatario_id && d === e.data_destinatario) return 'T'
+      }
+      return tp(id, d)
+    }
+    const datasF = [...new Set([...pl.map(r => r.data), ...(form?.editar ? [form.editar.data_solicitante, form.editar.data_destinatario] : [])])].sort()
+    const ok = form?.sol && form?.dest
+    const opSol = ok ? datasF.filter(d => tipoBase(form.sol, d) === 'T' && tipoBase(form.dest, d) === 'F') : []
+    const opDest = ok ? datasF.filter(d => tipoBase(form.sol, d) === 'F' && tipoBase(form.dest, d) === 'T') : []
+    const opt = d => <option key={d} value={d}>{fmt(d)} ({diaSemana(d)})</option>
+    const aplicar = async () => {
+      const { error } = await supabase.rpc('admin_trocar_direto', {
+        p_sol: form.sol, p_dest: form.dest, p_dsol: form.dsol, p_ddest: form.ddest, p_editar: form.editar?.id ?? null })
+      setMsg(error ? '❌ ' + error.message : '✅ Troca aplicada na escala')
+      setTimeout(() => setMsg(''), 4000)
+      if (!error) setForm(null)
+      carregar()
+    }
+
     return (
       <div className="space-y-3">
         <h2 className="font-extrabold">Trocas do turno ({doTurno.filter(t => t.status === 'pendente').length} pendentes)</h2>
+        {!form && <button className="btn w-full" onClick={() => setForm({ sol: '', dest: '', dsol: '', ddest: '', editar: null })}>➕ Nova troca direta</button>}
+        {form && (
+          <div className="card space-y-3 border-amber-300/60">
+            <p className="font-bold">{form.editar ? 'Editar datas da troca' : 'Nova troca direta'}</p>
+            <p className="text-xs text-slate-400">Aplicada na hora na escala, sem precisar do aceite das analistas.</p>
+            <select className="inp" value={form.sol} disabled={!!form.editar} onChange={e => setForm({ ...form, sol: e.target.value, dest: '', dsol: '', ddest: '' })}>
+              <option value="">Analista que vai folgar…</option>
+              {analistas.map(a => <option key={a.id} value={a.id}>{a.nome}</option>)}
+            </select>
+            <select className="inp" value={form.dest} disabled={!!form.editar || !form.sol} onChange={e => setForm({ ...form, dest: e.target.value, dsol: '', ddest: '' })}>
+              <option value="">Troca com…</option>
+              {analistas.filter(a => a.id !== form.sol).map(a => <option key={a.id} value={a.id}>{a.nome}</option>)}
+            </select>
+            <select className="inp" value={form.dsol} disabled={!ok} onChange={e => setForm({ ...form, dsol: e.target.value })}>
+              <option value="">Dia em que {ok ? nomeA(form.sol) : 'ela'} folga (hoje trabalha)</option>{opSol.map(opt)}
+            </select>
+            <select className="inp" value={form.ddest} disabled={!ok} onChange={e => setForm({ ...form, ddest: e.target.value })}>
+              <option value="">Dia em que {ok ? nomeA(form.sol) : 'ela'} trabalha (hoje folga)</option>{opDest.map(opt)}
+            </select>
+            {ok && (!opSol.length || !opDest.length) && <p className="text-xs text-amber-300">Não há datas compatíveis entre as duas nos dias cadastrados.</p>}
+            <div className="grid grid-cols-2 gap-2">
+              <button className="btn-sec" onClick={() => setForm(null)}>Cancelar</button>
+              <button className="btn" disabled={!ok || !form.dsol || !form.ddest} onClick={aplicar}>Aplicar troca</button>
+            </div>
+          </div>
+        )}
         <select className="inp !py-2" value={filtro} onChange={e => setFiltro(e.target.value)}>
           {['todas', 'pendente', 'aceito', 'recusado', 'cancelado'].map(s => <option key={s} value={s}>{s === 'todas' ? 'Todas' : s}</option>)}
         </select>
@@ -66,6 +119,8 @@ export default function Trocas({ eu, analistas, admin }) {
               </>}
               {t.status === 'aceito' &&
                 <button className="btn-sec !py-1 !px-3 text-xs" onClick={() => agir(t, 'desfazer', 'Desfazer a troca? A escala volta ao que era antes.')}>Desfazer troca</button>}
+              {(t.status === 'pendente' || t.status === 'aceito') &&
+                <button className="btn-sec !py-1 !px-3 text-xs" onClick={() => setForm({ sol: t.solicitante_id, dest: t.destinatario_id, dsol: t.data_solicitante, ddest: t.data_destinatario, editar: t })}>Editar datas</button>}
             </div>
           </div>
         ))}
